@@ -8,11 +8,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include "chatroom_utils.h"
 
-#define MAX_CLIENTS 4
+#define MAX_CLIENTS 10
 
-
+#define LOGIN_SIZE 32
+#define MESSAGE_SIZE 256
 
 //Enum of different messages possible.
 typedef enum{
@@ -32,21 +32,22 @@ typedef enum{
 //message structure
 typedef struct{
 	message_type type;
-	char username[21];
-	char data[256];
+	char username[LOGIN_SIZE];
+	char data[MESSAGE_SIZE];
 }message;
 
 //structure to hold client connection information
 typedef struct clientInfo{
 	int socket;
 	struct sockaddr_in address;
-	char username[20];
+	char username[LOGIN_SIZE];
+    char password[LOGIN_SIZE];
 }clientInfo;
 
 
 void serverInit(clientInfo *server, int port){
 	if((server->socket = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-		perror("Failed to create socket");
+		perror("Creare socket esuata..");
 		exit(1);
 	}
 
@@ -55,36 +56,36 @@ void serverInit(clientInfo *server, int port){
 	server->address.sin_port = htons(port);
 
 	if(bind(server->socket, (struct sockaddr *)&server->address, sizeof(server->address)) < 0){
-		perror("Binding failed");
+		perror("Binding esuat..");
 		exit(1);
 	}
 
 	const int optVal = 1;
 	const socklen_t optLen = sizeof(optVal);
 	if(setsockopt(server->socket, SOL_SOCKET, SO_REUSEADDR, (void*)&optVal, optLen) < 0){
-		perror("Set socket option failed");
+		perror("Setare optiune socket esuata..");
 		exit(1);
 	}
 
 	if(listen(server->socket, 3) < 0){
-		perror("Listen failed");
+		perror("Asteptare esuata..");
 		exit(1);
 	}
 
 	//Accept and incoming connection
-	printf("Waiting for connections ..\n");
+	printf("Asteptare conexiuni..\n");
 }
 // revised ok
 void publicMessage(clientInfo clients[], int sender, char *message_text){
 	message msg;
 	msg.type = PUBLIC_MESSAGE;
-	strncpy(msg.username, clients[sender].username, 20);
-	strncpy(msg.data, message_text, 256);
+	strncpy(msg.username, clients[sender].username, LOGIN_SIZE);
+	strncpy(msg.data, message_text, MESSAGE_SIZE);
 	int i = 0;
 	for(i = 0; i < MAX_CLIENTS; i++){
 		if(i != sender && clients[i].socket != 0){
 			if(send(clients[i].socket, &msg, sizeof(msg), 0) < 0){
-				perror("Send failed");
+				perror("Trimitere esuata..");
 				exit(1);
 			}
 		}
@@ -94,14 +95,14 @@ void publicMessage(clientInfo clients[], int sender, char *message_text){
 void privateMessage(clientInfo clients[], int sender,char *username, char *message_text){
 	message msg;
 	msg.type = PRIVATE_MESSAGE;
-	strncpy(msg.username, clients[sender].username, 20);
-	strncpy(msg.data, message_text, 256);
+	strncpy(msg.username, clients[sender].username, LOGIN_SIZE);
+	strncpy(msg.data, message_text, MESSAGE_SIZE);
 
 	int i;
 	for(i = 0; i < MAX_CLIENTS; i++){
 		if(i != sender && clients[i].socket != 0 && strcmp(clients[i].username, username) == 0){
 			if(send(clients[i].socket, &msg, sizeof(msg), 0) < 0){
-				perror("Send failed");
+				perror("Trimitere esuata..");
 				exit(1);
 			}
 			return;
@@ -109,10 +110,10 @@ void privateMessage(clientInfo clients[], int sender,char *username, char *messa
 	}
 
 	msg.type = USERNAME_ERROR;
-	sprintf(msg.data, "Username \"%s\" does not exist or is not logged in.", username);
+	sprintf(msg.data, "Utilizatorul \"%s\" nu exista sau nu e logat.", username);
 
 	if(send(clients[sender].socket, &msg, sizeof(msg), 0) < 0){
-		perror("Send failed");
+		perror("Trimitere esuata..");
 		exit(1);
 	}
 
@@ -121,20 +122,20 @@ void privateMessage(clientInfo clients[], int sender,char *username, char *messa
 void userConnectNotify(clientInfo *clients, int sender){
 	message msg;
 	msg.type = CONNECT;
-	strncpy(msg.username, clients[sender].username, 21);
+	strncpy(msg.username, clients[sender].username, LOGIN_SIZE);
 	int i = 0;
 	for(i = 0; i < MAX_CLIENTS; i++){
 		if(clients[i].socket != 0){
 			if(i == sender){
 				msg.type = SUCCESS;
 				if(send(clients[i].socket, &msg, sizeof(msg), 0) < 0){
-					perror("Send failed");
+					perror("Trimitere esuata..");
 					exit(1);
 				}
 			}
 			else{
 				if(send(clients[i].socket, &msg, sizeof(msg), 0) < 0){
-					perror("Send failed");
+					perror("Trimitere esuata..");
 					exit(1);
 				}
 			}
@@ -145,12 +146,12 @@ void userConnectNotify(clientInfo *clients, int sender){
 void userDisconnectNotify(clientInfo *clients, char *username){
 	message msg;
 	msg.type = DISCONNECT;
-	strncpy(msg.username, username, 21);
+	strncpy(msg.username, username, LOGIN_SIZE);
 	int i = 0;
 	for(i = 0; i < MAX_CLIENTS; i++){
 		if(clients[i].socket != 0){
 			if(send(clients[i].socket, &msg, sizeof(msg), 0) < 0){
-				perror("Send failed");
+				perror("Trimitere esuata..");
 				exit(1);
 			}
 		}
@@ -171,7 +172,7 @@ void sendUserList(clientInfo *clients, int receiver){
 	}
 
 	if(send(clients[receiver].socket, &msg, sizeof(msg), 0) < 0){
-		perror("Send failed");
+		perror("Trimitere esuata..");
 		exit(1);
 	}
 }
@@ -182,7 +183,7 @@ void chatFullNotify(int socket){
 	fullMsg.type = TOO_FULL;
 
 	if(send(socket, &fullMsg, sizeof(fullMsg), 0) < 0){
-		perror("Send failed");
+		perror("Trimitere esuata..");
 		exit(1);
 	}
 	close(socket);
@@ -204,7 +205,7 @@ void handle_client_message(clientInfo clients[], int sender){
 	message msg;
 
 	if((read_size = recv(clients[sender].socket, &msg, sizeof(message), 0)) == 0){
-		printf("User disconnected: %s.\n", clients[sender].username);
+		printf("Utilizator deconectat: %s.\n", clients[sender].username);
 		close(clients[sender].socket);
 		clients[sender].socket = 0;
 		userDisconnectNotify(clients, clients[sender].username);
@@ -228,7 +229,7 @@ void handle_client_message(clientInfo clients[], int sender){
 			}
 
 			strcpy(clients[sender].username, msg.username);
-			printf("User connected: %s\n", clients[sender].username);
+			printf("Utilizator conectat: %s\n", clients[sender].username);
 			userConnectNotify(clients, sender);
 			break;
 
@@ -241,7 +242,7 @@ void handle_client_message(clientInfo clients[], int sender){
 			break;
 
 		default:
-			fprintf(stderr, "Unknown message type received.\n");
+			fprintf(stderr, "Mesaj necunoscut.\n");
 			break;
 		}
 	}
@@ -271,7 +272,7 @@ void handle_new_connection(clientInfo *server_info, clientInfo clients[]){
 	newSocket = accept(server_info->socket, (struct sockaddr*)&server_info->address, (socklen_t*)&address_len);
 
 	if(newSocket < 0){
-		perror("Accept Failed");
+		perror("Acceptare nereusita..");
 		exit(1);
 	}
 
@@ -289,9 +290,12 @@ void handle_new_connection(clientInfo *server_info, clientInfo clients[]){
 
 void handle_user_input(clientInfo clients[])
 {
-	char input[255];
+	char input[MESSAGE_SIZE];
 	fgets(input, sizeof(input), stdin);
-	trim_newline(input);
+    int temp = strlen(input)-1;
+    if(input[temp] == '\n'){
+        input[temp] = '\0';
+    }
 
 	if(input[0] == 'q') {
 		stopServer(clients);
@@ -300,7 +304,8 @@ void handle_user_input(clientInfo clients[])
 
 int main(int argc, char *argv[])
 {
-	puts("Starting server.");
+	puts("Pornire Server..");
+    sleep(15);
 
 	fd_set file_descriptors;
 
@@ -313,7 +318,7 @@ int main(int argc, char *argv[])
 	}
 
 	if(argc != 2){
-		fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+		fprintf(stderr, "Incearca: %s <port>\n", argv[0]);
 		exit(1);
 	}
 
@@ -323,7 +328,7 @@ int main(int argc, char *argv[])
 		int max_fd = construct_fd_set(&file_descriptors, &server_info, clients);
 
 		if(select(max_fd + 1, &file_descriptors, NULL, NULL, NULL) < 0){
-			perror("Select Failed");
+			perror("Selectare esuata");
 			stopServer(clients);
 		}
 
