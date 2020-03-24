@@ -47,7 +47,6 @@ typedef struct{
 }message;
 
 
-// get a username from the user.
 void getUsername(char *username){
 	while(true){
 		printf("Introduceti un nume de utilizator: ");
@@ -67,7 +66,6 @@ void getUsername(char *username){
 	}
 }
 
-//send local username to the server.
 void setUsername(clientInfo *connection){
 	message msg;
 	msg.type = SET_USERNAME;
@@ -84,13 +82,13 @@ void killClient(clientInfo *connection){
 	exit(0);
 }
 
-//initialize connection to the server.
+//conexiune server
 void connect(clientInfo *connection, char *address, char *port){
 
 	while(true){
 		getUsername(connection->username);
 
-		//Create socket
+		//Creare socket
 		if((connection->socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
 			perror("Eroare creare socket..");
 		}
@@ -99,7 +97,7 @@ void connect(clientInfo *connection, char *address, char *port){
 		connection->address.sin_family = AF_INET;
 		connection->address.sin_port = htons(atoi(port));
 
-		//Connect to remote server
+		// conectare server
 		if(connect(connection->socket, (struct sockaddr *)&connection->address, sizeof(connection->address)) < 0){
 			perror("Conexiune esuata..");
 			exit(1);
@@ -181,8 +179,6 @@ void userOptions(clientInfo *connection){
 			puts(KRED "Daca nu vrei sa-i spui nimic nu mai folosi chat-ul." RESET);
 			return;
 		}
-
-		//printf("|%s|%s|\n", toUsername, chatMsg);
 		strncpy(msg.username, toUsername, LOGIN_SIZE);
 		strncpy(msg.data, chatMsg, MESSAGE_SIZE);
 
@@ -191,7 +187,7 @@ void userOptions(clientInfo *connection){
 			exit(1);
 		}
 	}
-	else{ //regular public message
+	else{ 
 		message msg;
 		msg.type = PUBLIC_MESSAGE;
 		strncpy(msg.username, connection->username, LOGIN_SIZE);
@@ -202,7 +198,6 @@ void userOptions(clientInfo *connection){
 
 		strncpy(msg.data, input, MESSAGE_SIZE);
 
-		//Send some data
 		if(send(connection->socket, &msg, sizeof(message), 0) < 0){
 			perror("Trimitere esuata..");
 			exit(1);
@@ -213,7 +208,6 @@ void userOptions(clientInfo *connection){
 void serverMessages(clientInfo *connection){
 	message msg;
 
-	//Receive a reply from the server
 	ssize_t recv_val = recv(connection->socket, &msg, sizeof(message), 0);
 	if(recv_val < 0){
 		perror("Primire raspuns esuata..");
@@ -239,8 +233,7 @@ void serverMessages(clientInfo *connection){
 		printf("%s", msg.data);
 		break;
 
-	case SET_USERNAME:
-		//TODO: implement: name changes in the future?
+	case SET_USERNAME:	// re setarea numelui nu e o optiune dar am acoperit cazul pentru enum
 		break;
 
 	case PUBLIC_MESSAGE:
@@ -273,7 +266,6 @@ int main(int argc, char *argv[]){
 
 	connect(&connection, argv[1], argv[2]);
 
-	//keep communicating with server
 	while(true){
 		FD_ZERO(&file_descriptors);
 		FD_SET(STDIN_FILENO, &file_descriptors);
