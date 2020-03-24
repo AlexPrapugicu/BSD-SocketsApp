@@ -14,7 +14,7 @@
 #define LOGIN_SIZE 32
 #define MESSAGE_SIZE 256
 
-//Enum of different messages possible.
+//Enum folosit pentru tratarea tipurilor de mesaje
 typedef enum{
 	CONNECT,
 	DISCONNECT,
@@ -29,14 +29,14 @@ typedef enum{
 } message_type;
 
 
-//message structure
+// structura pt un mesaj 
 typedef struct{
 	message_type type;
 	char username[LOGIN_SIZE];
 	char data[MESSAGE_SIZE];
 }message;
 
-//structure to hold client connection information
+//info client
 typedef struct clientInfo{
 	int socket;
 	struct sockaddr_in address;
@@ -72,10 +72,10 @@ void serverInit(clientInfo *server, int port){
 		exit(1);
 	}
 
-	//Accept and incoming connection
+	
 	printf("Asteptare conexiuni..\n");
 }
-// revised ok
+// merge ok
 void publicMessage(clientInfo clients[], int sender, char *message_text){
 	message msg;
 	msg.type = PUBLIC_MESSAGE;
@@ -91,7 +91,7 @@ void publicMessage(clientInfo clients[], int sender, char *message_text){
 		}
 	}
 }
-// revised ok 
+// merge ok 
 void privateMessage(clientInfo clients[], int sender,char *username, char *message_text){
 	message msg;
 	msg.type = PRIVATE_MESSAGE;
@@ -118,7 +118,6 @@ void privateMessage(clientInfo clients[], int sender,char *username, char *messa
 	}
 
 }
-// revised ok
 void userConnectNotify(clientInfo *clients, int sender){
 	message msg;
 	msg.type = CONNECT;
@@ -142,7 +141,7 @@ void userConnectNotify(clientInfo *clients, int sender){
 		}
 	}
 }
-//revised ok
+//merge ok
 void userDisconnectNotify(clientInfo *clients, char *username){
 	message msg;
 	msg.type = DISCONNECT;
@@ -157,7 +156,6 @@ void userDisconnectNotify(clientInfo *clients, char *username){
 		}
 	}
 }
-// revised ok
 void sendUserList(clientInfo *clients, int receiver){
 	message msg;
 	msg.type = GET_USERS;
@@ -177,7 +175,6 @@ void sendUserList(clientInfo *clients, int receiver){
 	}
 }
 
-//revised ok
 void chatFullNotify(int socket){
 	message fullMsg;
 	fullMsg.type = TOO_FULL;
@@ -189,8 +186,6 @@ void chatFullNotify(int socket){
 	close(socket);
 }
 
-//revised ok
-//close all the sockets before exiting
 void stopServer(clientInfo connection[]){
 	int i;
 	for(i = 0; i < MAX_CLIENTS; i++){
@@ -265,7 +260,7 @@ int construct_fd_set(fd_set *set, clientInfo *server_info,clientInfo clients[]){
 	}
 	return max_fd;
 }
-//revised
+// okkk...
 void handle_new_connection(clientInfo *server_info, clientInfo clients[]){
 	int newSocket;
 	int address_len;
@@ -282,7 +277,7 @@ void handle_new_connection(clientInfo *server_info, clientInfo clients[]){
 			clients[i].socket = newSocket;
 			break;
 		}
-		else if(i == MAX_CLIENTS - 1){ // if we can accept no more clients{
+		else if(i == MAX_CLIENTS - 1){ 
 			chatFullNotify(newSocket);
 		}
 	}
